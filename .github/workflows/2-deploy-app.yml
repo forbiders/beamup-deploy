@@ -175,8 +175,8 @@ jobs:
         run: |
           git clone --quiet "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" /tmp/factory
           cd /tmp/factory
-          git config user.name "beamup-deploy"
-          git config user.email "beamup-deploy@users.noreply.github.com"
+          git config user.name "${{ github.repository_owner }}"
+          git config user.email "${{ github.repository_owner }}@users.noreply.github.com"
           ROW="| \`${{ inputs.target_repo }}\` | $APP_URL | $(date -u +%Y-%m-%d) |"
           if grep -q "| \`${{ inputs.target_repo }}\` |" README.md; then
             sed -i "s#| \`${{ inputs.target_repo }}\` .*#$ROW#" README.md

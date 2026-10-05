@@ -1,0 +1,58 @@
+name: 1 - Generate all keys
+
+# STEP 1 of 2. Tap "Run workflow" once.
+# This makes EVERYTHING: deploy SSH key, server token, dashboard password,
+# and stores them as secrets automatically. You paste ONE thing beforehand
+# (a GitHub token, see SECRETS.md), then never touch keys again.
+
+on:
+  workflow_dispatch:
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Log in to GitHub CLI
+        run: echo "${{ secrets.GH_PAT }}" | gh auth login --with-token
+        env:
+          GH_TOKEN: ${{ secrets.GH_PAT }}
+
+      - name: Generate all keys
+        id: gen
+        run: |
+          ssh-keygen -t ed25519 -f /tmp/beamup -N "" -C "babybeamup-deploy" -q
+          {
+            echo "SERVER_TOKEN=$(openssl rand -hex 16)"
+            echo "SERVER_PASSWORD=$(openssl rand -base64 18 | tr -d '/+=\n')"
+          } > /tmp/app_secrets.txt
+          echo "done=yes" >> "$GITHUB_OUTPUT"
+
+      - name: Add public key to your GitHub account
+        run: |
+          gh ssh-key add /tmp/beamup.pub --title "babybeamup-deploy" 2>&1 || \
+            echo "(key may already exist — continuing)"
+        env:
+          GH_TOKEN: ${{ secrets.GH_PAT }}
+
+      - name: Save private key as repo secret
+        run: gh secret set BEAMUP_SSH_KEY < /tmp/beamup
+        env:
+          GH_TOKEN: ${{ secrets.GH_PAT }}
+
+      - name: Save app passwords as repo secret
+        run: gh secret set APP_SECRETS < /tmp/app_secrets.txt
+        env:
+          GH_TOKEN: ${{ secrets.GH_PAT }}
+
+      - name: Shred local copies
+        if: always()
+        run: shred -u /tmp/beamup /tmp/beamup.pub /tmp/app_secrets.txt 2>/dev/null || rm -f /tmp/beamup /tmp/beamup.pub /tmp/app_secrets.txt
+
+      - name: Summary
+        run: |
+          echo "## ✅ All keys generated and stored" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Public key added to your GitHub SSH keys (verify: avatar → Settings → SSH and GPG keys)." >> "$GITHUB_STEP_SUMMARY"
+          echo "- Secrets saved in THIS repo → Settings → Secrets → Actions: \`BEAMUP_SSH_KEY\`, \`APP_SECRETS\`." >> "$GITHUB_STEP_SUMMARY"
+          echo "- Your \`GH_PAT\` secret was only the installer — you may now delete it, or keep it for re-runs." >> "$GITHUB_STEP_SUMMARY"
+          echo "- Next: run workflow **2 - Deploy app to baby-beamup**." >> "$GITHUB_STEP_SUMMARY"

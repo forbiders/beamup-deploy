@@ -26,8 +26,8 @@ jobs:
           echo "::add-mask::$APP_TOKEN"
 
       - name: Install everything
+        # No login step: gh authenticates straight from GH_TOKEN env.
         run: |
-          echo "${{ secrets.GH_PAT }}" | gh auth login --with-token
           gh ssh-key add /tmp/beamup.pub --title "babybeamup-deploy" 2>&1 || true
           gh secret set BEAMUP_SSH_KEY < /tmp/beamup
           gh secret set APP_TOKEN < /tmp/app_secrets.txt

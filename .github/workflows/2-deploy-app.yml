@@ -89,6 +89,7 @@ jobs:
 
       - name: Sync keys to BeamUp
         run: |
+          export NODE_PATH="$(npm root -g)"
           node -e "
           const {syncGithubKeys} = require('beamup-cli/lib/ssh.js');
           syncGithubKeys({host: process.env.BEAMUP_HOST, githubUsername: process.env.GH_USER})

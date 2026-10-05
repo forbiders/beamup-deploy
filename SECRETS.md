@@ -2,15 +2,27 @@
 
 > Never in code, chat, issues, or README. Leak = delete where made, make new.
 
-## Made by workflow 1 (verify, don't paste)
+## You paste once
 
-Run it, paste the 3 shown blocks:
+This repo → Settings → Secrets → Actions → New secret:
 
-| #   | Paste this                       | Where it goes (exact clicks)                                                      | Saved as            |
-| --- | -------------------------------- | --------------------------------------------------------------------------------- | ------------------- |
-| 1   | Public key (`ssh-ed25519 AAAA…`) | Avatar → Settings → **SSH and GPG keys** → New SSH key, title `babybeamup-deploy` | — (stays on GitHub) |
-| 2   | Private key (`-----BEGIN…`)      | This repo → Settings → Secrets → Actions → New secret                             | `BEAMUP_SSH_KEY`    |
-| 3   | Token (32 hex chars)             | Same place → New secret                                                           | `APP_TOKEN`         |
+| Name     | Value = classic token with scopes                                                                                                  |
+| -------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| `GH_PAT` | `repo` + `workflow` + `admin:public_key` (avatar → Settings → Developer settings → Tokens (classic) → Generate → copy immediately) |
+
+Workflow 1 uses it to install everything below. Afterwards you may delete
+it or keep it for re-runs.
+
+## Made for you by workflow 1
+
+Same place (Settings → Secrets → Actions), verify — never paste:
+
+| Name             | What's inside      | Used by                                          |
+| ---------------- | ------------------ | ------------------------------------------------ |
+| `BEAMUP_SSH_KEY` | Private deploy key | Workflow 2 pushes code to baby-beamup            |
+| `APP_TOKEN`      | Random hex token   | Your app's password/token, wherever it needs one |
+
+Public half: avatar → Settings → SSH and GPG keys (`babybeamup-deploy`).
 
 ## Your app's own secrets (you write these)
 

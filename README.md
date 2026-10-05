@@ -1,15 +1,18 @@
 # 🚀 beamup-deploy — our apps on baby-beamup.club, two taps
 
-No CLI, no terminal, no tokens. Everything happens in GitHub.
+No CLI, no terminal. Everything happens in GitHub.
 
 ## Tap 1 — keys (once ever)
 
-Actions → **1 - Generate all keys** → Run workflow → paste the 3 shown
-blocks where it says (~2 minutes). Details: [`SECRETS.md`](SECRETS.md).
+Settings → Secrets → Actions → new secret: name `GH_PAT`, value = your
+classic token (`repo` + `workflow` + `admin:public_key`).
+
+Then Actions → **🔑 Setup: Generate & Install BeamUp Keys** → Run
+workflow. It makes your deploy key + app token and installs them itself.
 
 ## Tap 2 — deploy (per app)
 
-Actions → **2 - Deploy app to baby-beamup** → Run workflow:
+Actions → **🚀 Deploy: Push App to BabyBeamUp** → Run workflow:
 
 - **App repo** — which repo to host (`owner/repo`).
 - **Project** — empty = repo name (`Dockerfile` apps MUST include `docker`).
@@ -18,6 +21,7 @@ Actions → **2 - Deploy app to baby-beamup** → Run workflow:
   `Procfile` for the push; your repo stays untouched.
 
 Ends printing your ✅ app link + the panel link. Re-tap for updates.
+Details: [`SECRETS.md`](SECRETS.md).
 
 ## 🌐 Our apps (auto-updated by every deploy)
 

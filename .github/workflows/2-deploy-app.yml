@@ -1,4 +1,4 @@
-name: 2 - Deploy app to baby-beamup
+name: "🚀 Deploy: Push App to BabyBeamUp"
 
 # STEP 2 of 2. Tap "Run workflow" (optionally change inputs first).
 # Checks out your app repo, syncs keys, pushes to baby-beamup.club,

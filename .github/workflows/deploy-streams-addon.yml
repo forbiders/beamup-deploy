@@ -1,0 +1,16 @@
+name: "📲 Deploy: Streams Addon"
+
+# One tap, zero typing. Redeploys the live streams addon.
+# Uses the normal build (keeps the current live URL as-is).
+
+on:
+  workflow_dispatch:
+
+jobs:
+  deploy-streams-addon:
+    uses: ./.github/workflows/2-deploy-app.yml
+    with:
+      target_repo: zunex69/stremioaddon
+      project: pencarimovie-streams
+      use_docker: false
+    secrets: inherit

@@ -1,26 +1,33 @@
 name: "🚀 Deploy: Push App to BabyBeamUp"
 
-# STEP 2 of 2. Tap "Run workflow" (optionally change inputs first).
-# Checks out your app repo, syncs keys, pushes to baby-beamup.club,
-# applies APP_SECRETS, and prints your live link. No CLI on your PC.
+# Deploys any repo you own. No CLI on your PC.
+# Needs repo secrets: BEAMUP_SSH_KEY (from workflow 1).
+
+# Which file hosts your app? You DON'T pick — the builder detects it:
+#   package.json      -> Node.js app (npm install + npm start)
+#   requirements.txt  -> Python app | composer.json -> PHP app
+#   Dockerfile        -> container, BUT project name MUST include "docker"
+#   Procfile          -> your own start command (wins over entry_file)
+# No Procfile and unsure? Set entry_file below (bot.js, main.py,
+# start.sh, package.json) and we write the Procfile for the push.
 
 on:
   workflow_dispatch:
     inputs:
       target_repo:
-        description: "App repo to deploy, as owner/name (example: myuser/myapp)"
+        description: "App repo as owner/name"
         required: true
         default: ""
       project:
-        description: "BeamUp project name (empty = repo name; Dockerfile apps MUST include 'docker')"
+        description: "BeamUp project name (empty = repo name)"
         required: false
         default: ""
       entry_file:
-        description: "File that STARTS your app if it has no Procfile (examples: bot.js, main.py, start.sh, package.json). Empty = skip."
+        description: "Start file if repo has no Procfile (bot.js, main.py, start.sh, package.json)"
         required: false
         default: ""
       ref:
-        description: "Branch/tag to deploy"
+        description: "Branch or tag"
         required: false
         default: "main"
 
@@ -28,7 +35,7 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     permissions:
-      contents: write # to register the live link in this repo's README
+      contents: write # lets the README registry step below save the link
     env:
       BEAMUP_HOST: a.baby-beamup.club
       GH_USER: ${{ github.repository_owner }}
@@ -39,7 +46,6 @@ jobs:
           repository: ${{ inputs.target_repo }}
           ref: ${{ inputs.ref }}
           fetch-depth: 0
-          # Falls back to the built-in token; set GH_PAT for private repos.
           token: ${{ secrets.GH_PAT || github.token }}
 
       - name: Set up Node.js
@@ -55,42 +61,33 @@ jobs:
           PROJECT="${{ inputs.project }}"
           [ -z "$PROJECT" ] && PROJECT="$REPO_NAME"
           echo "project=$PROJECT" >> "$GITHUB_OUTPUT"
-          echo "Deploying ${{ inputs.target_repo }} as $PROJECT"
 
-      - name: Make entry file runnable (no Procfile? we write one)
-        # BeamUp only starts what a Procfile (or buildpack default) says.
-        # If your repo has no Procfile, tell us your start file and we
-        # generate one for the push — your GitHub repo stays untouched.
+      - name: Write Procfile from entry file
+        # Skipped when entry_file is empty or repo already has a Procfile.
+        # Generated only for the push — your GitHub repo stays untouched.
         run: |
           ENTRY="${{ inputs.entry_file }}"
-          if [ -z "$ENTRY" ]; then
-            echo "No entry_file given, skipping Procfile generation."
-            exit 0
-          fi
-          if [ -f Procfile ]; then
-            echo "Repo already has a Procfile, keeping it."
-            exit 0
-          fi
+          [ -z "$ENTRY" ] && exit 0
+          [ -f Procfile ] && exit 0
           case "$ENTRY" in
             package.json) CMD="npm start" ;;
             *.js)         CMD="node $ENTRY" ;;
             *.py)         CMD="python $ENTRY" ;;
             *.sh)         CMD="bash $ENTRY" ;;
-            *) echo "Don't know how to start '$ENTRY' (use bot.js, main.py, start.sh or package.json)."; exit 1 ;;
+            *) echo "Can't start '$ENTRY'. Use bot.js, main.py, start.sh or package.json."; exit 1 ;;
           esac
           echo "web: $CMD" > Procfile
-          echo "Generated Procfile: web: $CMD"
 
-      - name: Install SSH key for BeamUp
+      - name: Install SSH key
         run: |
           mkdir -p ~/.ssh
           echo "${{ secrets.BEAMUP_SSH_KEY }}" > ~/.ssh/beamup
           chmod 600 ~/.ssh/beamup
 
-      - name: Install beamup-cli (pinned)
+      - name: Install beamup-cli
         run: npm install -g beamup-cli@1.3.2
 
-      - name: Sync GitHub keys to BeamUp
+      - name: Sync keys to BeamUp
         run: |
           node -e "
           const {syncGithubKeys} = require('beamup-cli/lib/ssh.js');
@@ -104,22 +101,18 @@ jobs:
         run: |
           HASH=$(printf '%s\n' "$(echo "$GH_USER" | tr '[:upper:]' '[:lower:]')" | sha256sum | cut -c1-12)
           PROJECT="${{ steps.names.outputs.project }}"
-          echo "Deploying $PROJECT for $GH_USER (hash $HASH)"
           export GIT_SSH_COMMAND="ssh -i ~/.ssh/beamup -o StrictHostKeyChecking=no -o ServerAliveInterval=15"
           git remote add beamup "dokku@$BEAMUP_HOST:$HASH/$PROJECT" || true
           for i in 1 2 3; do
             git push beamup HEAD:master --force && break
-            echo "push try $i failed, waiting 5 min before retry"
             sleep 300
           done
           echo "APP_URL=https://$HASH-$PROJECT.baby-beamup.club" >> "$GITHUB_ENV"
 
-      - name: Apply app secrets (optional)
+      - name: Apply app secrets
+        # Skipped when APP_SECRETS is empty. One KEY=value per line.
         run: |
-          if [ -z "${{ secrets.APP_SECRETS }}" ]; then
-            echo "No APP_SECRETS set, skipping."
-            exit 0
-          fi
+          [ -z "${{ secrets.APP_SECRETS }}" ] && exit 0
           HASH=$(printf '%s\n' "$(echo "$GH_USER" | tr '[:upper:]' '[:lower:]')" | sha256sum | cut -c1-12)
           PROJECT="${{ steps.names.outputs.project }}"
           while IFS= read -r line; do
@@ -128,16 +121,14 @@ jobs:
               "dokku@$BEAMUP_HOST" config:set "$HASH/$PROJECT" "$line"
           done <<< "${{ secrets.APP_SECRETS }}"
 
-      - name: Show app URL
+      - name: Show links
         run: |
           echo "## ✅ Pushed to BeamUp" >> "$GITHUB_STEP_SUMMARY"
-          echo "Your app link: **$APP_URL** (allow a few minutes for first boot)." >> "$GITHUB_STEP_SUMMARY"
-          echo "Your BeamUp panel (all your apps): **https://baby-beamup.club** (log in with GitHub)." >> "$GITHUB_STEP_SUMMARY"
-          echo "New apps can take ~6h before the host registry accepts them — retry later if the push was rejected." >> "$GITHUB_STEP_SUMMARY"
+          echo "Your app: **$APP_URL** (first boot takes a few minutes)." >> "$GITHUB_STEP_SUMMARY"
+          echo "Your panel (all apps): **https://baby-beamup.club**." >> "$GITHUB_STEP_SUMMARY"
 
       - name: Register link in README
-        # Keeps this repo's README as the live registry: which repo is
-        # hosted where. Re-runs update the row instead of duplicating it.
+        # Adds/updates this repo's hosted-apps table. Never duplicates rows.
         run: |
           git clone --quiet "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" /tmp/factory
           cd /tmp/factory
@@ -150,5 +141,5 @@ jobs:
             awk -v row="$ROW" '/<!-- hosted-apps-end -->/{print row}1' README.md > README.md.tmp && mv README.md.tmp README.md
           fi
           git add README.md
-          git diff --cached --quiet || git commit -m "register ${{ inputs.target_repo }} -> $APP_URL" --quiet
-          git push origin main --quiet || echo "(registry update skipped: push raced another run)"
+          git diff --cached --quiet || git commit -m "register ${{ inputs.target_repo }}" --quiet
+          git push origin main --quiet || true

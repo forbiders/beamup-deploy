@@ -49,6 +49,6 @@ jobs:
             echo "## ✅ Keys installed"
             echo ""
             echo "- SSH key → your GitHub SSH keys. Secrets → repo Settings → Secrets: \`BEAMUP_SSH_KEY\`, \`APP_TOKEN\`."
-            echo "- Your app's own secrets go in \`APP_SECRETS\` (one \`KEY=value\` per line) — see SECRETS.md."
+            echo "- Your app's own secrets go in \`APP_SECRETS\` (one \`KEY=value\` per line, repo Settings → Secrets)."
             echo "- Next: run **🚀 Deploy: Push App to BabyBeamUp**."
           } >> "$GITHUB_STEP_SUMMARY"

@@ -8,7 +8,10 @@ Settings → Secrets → Actions → new secret: name `GH_PAT`, value = your
 classic token (`repo` + `workflow` + `admin:public_key`).
 
 Then Actions → **🔑 Setup: Generate & Install BeamUp Keys** → Run
-workflow. It makes your deploy key + app token and installs them itself.
+workflow. It makes your deploy key + app token and stores them as
+`BEAMUP_SSH_KEY` + `APP_TOKEN` secrets. Your app's own secrets go in
+`APP_SECRETS` (one `KEY=value` per line). Never put secrets in code,
+chat, or README.
 
 ## Tap 2 — deploy (per app)
 
@@ -38,4 +41,3 @@ Panel (all apps): https://baby-beamup.club — log in with GitHub.
 - Apps must listen on the `PORT` env var; disk is temporary (stay stateless).
 - New apps need ~6h before the first deploy lands (`SyntaxError` /
   `update out of sequence` = "not yet", retry later).
-- Secrets live in Settings → Secrets. Never in code, chat, or README.

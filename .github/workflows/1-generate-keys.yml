@@ -27,18 +27,12 @@ jobs:
         id: gen
         run: |
           ssh-keygen -t ed25519 -f /tmp/beamup -N "" -C "babybeamup-deploy" -q
-          SERVER_TOKEN=$(openssl rand -hex 16)
-          SERVER_PASSWORD=$(openssl rand -base64 18 | tr -d '/+=\n')
-          {
-            echo "SERVER_TOKEN=$SERVER_TOKEN"
-            echo "SERVER_PASSWORD=$SERVER_PASSWORD"
-          } > /tmp/app_secrets.txt
+          APP_TOKEN=$(openssl rand -hex 16)
+          echo "APP_TOKEN=$APP_TOKEN" > /tmp/app_secrets.txt
           # Mask values so they NEVER appear in logs by accident.
-          echo "::add-mask::$SERVER_TOKEN"
-          echo "::add-mask::$SERVER_PASSWORD"
+          echo "::add-mask::$APP_TOKEN"
           # Pass to the summary step only (still masked in logs).
-          echo "server_token=$SERVER_TOKEN" >> "$GITHUB_OUTPUT"
-          echo "server_password=$SERVER_PASSWORD" >> "$GITHUB_OUTPUT"
+          echo "app_token=$APP_TOKEN" >> "$GITHUB_OUTPUT"
           echo "done=yes" >> "$GITHUB_OUTPUT"
 
       - name: Add public key to your GitHub account
@@ -81,10 +75,11 @@ jobs:
         run: |
           {
             echo ""
-            echo "## 🔑 Your passwords (shown once — copy now, they won't show again)"
+            echo "## 🔑 Your token (shown once — copy now, it won't show again)"
             echo ""
-            echo "- Stremio token (inside manifest URLs): \`${{ steps.gen.outputs.server_token }}\`"
-            echo "- Dashboard password: \`${{ steps.gen.outputs.server_password }}\`"
+            echo "- App token (use as password / API token wherever your app needs one): \`${{ steps.gen.outputs.app_token }}\`"
+            echo "- App-specific secrets (e.g. \`DATABASE_URL=…\`, one \`KEY=value\` per line) are yours to add:"
+            echo "  this repo → Settings → Secrets → Actions → \`APP_SECRETS\`. The deploy workflow applies them."
             echo ""
             echo "> If this repo is PUBLIC, everyone can see this page: make the repo"
             echo "> private first (repo → Settings → General → Danger Zone → Change visibility),"

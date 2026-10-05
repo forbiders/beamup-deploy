@@ -8,9 +8,9 @@ on:
   workflow_dispatch:
     inputs:
       target_repo:
-        description: "App repo to deploy (owner/name)"
+        description: "App repo to deploy, as owner/name (example: myuser/myapp)"
         required: true
-        default: "zunex69/stremioaddon"
+        default: ""
       project:
         description: "BeamUp project name (empty = repo name; Dockerfile apps MUST include 'docker')"
         required: false

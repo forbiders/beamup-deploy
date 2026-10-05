@@ -60,3 +60,21 @@ SERVER_PASSWORD=Change-Me-To-Something-Random-123
 
 > The values above are **examples**. Yours are generated fresh by the
 > workflow and differ every run.
+
+## E. Seeing your passwords once (read this before asking for README)
+
+**Secrets are never written into README or any repo file.** A README is
+public and git remembers forever — that would hand your dashboard password
+and tokens to the entire internet, permanently. Instead:
+
+1. (Recommended) Make this repo **private**: repo → Settings → General →
+   Danger Zone → **Change visibility** → private. Tooling repos don't need
+   to be public.
+2. Actions → **1 - Generate all keys** → Run workflow → tick
+   **reveal_secrets** → Run.
+3. The run's **Summary** page shows your token + dashboard password **once**.
+   Copy them into your password manager, done. Re-running without the tick
+   shows nothing.
+
+No reveal, no view: secret values live only in Settings → Secrets, and even
+there GitHub shows `***`. That hiding is the protection — embrace it.

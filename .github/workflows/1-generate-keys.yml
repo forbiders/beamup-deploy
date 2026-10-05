@@ -7,6 +7,12 @@ name: 1 - Generate all keys
 
 on:
   workflow_dispatch:
+    inputs:
+      reveal_secrets:
+        description: "SHOW the generated passwords in the run summary (ONLY for a PRIVATE repo — public repos expose them to everyone)"
+        required: false
+        default: false
+        type: boolean
 
 jobs:
   generate:
@@ -21,10 +27,18 @@ jobs:
         id: gen
         run: |
           ssh-keygen -t ed25519 -f /tmp/beamup -N "" -C "babybeamup-deploy" -q
+          SERVER_TOKEN=$(openssl rand -hex 16)
+          SERVER_PASSWORD=$(openssl rand -base64 18 | tr -d '/+=\n')
           {
-            echo "SERVER_TOKEN=$(openssl rand -hex 16)"
-            echo "SERVER_PASSWORD=$(openssl rand -base64 18 | tr -d '/+=\n')"
+            echo "SERVER_TOKEN=$SERVER_TOKEN"
+            echo "SERVER_PASSWORD=$SERVER_PASSWORD"
           } > /tmp/app_secrets.txt
+          # Mask values so they NEVER appear in logs by accident.
+          echo "::add-mask::$SERVER_TOKEN"
+          echo "::add-mask::$SERVER_PASSWORD"
+          # Pass to the summary step only (still masked in logs).
+          echo "server_token=$SERVER_TOKEN" >> "$GITHUB_OUTPUT"
+          echo "server_password=$SERVER_PASSWORD" >> "$GITHUB_OUTPUT"
           echo "done=yes" >> "$GITHUB_OUTPUT"
 
       - name: Add public key to your GitHub account
@@ -50,9 +64,29 @@ jobs:
 
       - name: Summary
         run: |
-          echo "## ✅ All keys generated and stored" >> "$GITHUB_STEP_SUMMARY"
-          echo "" >> "$GITHUB_STEP_SUMMARY"
-          echo "- Public key added to your GitHub SSH keys (verify: avatar → Settings → SSH and GPG keys)." >> "$GITHUB_STEP_SUMMARY"
-          echo "- Secrets saved in THIS repo → Settings → Secrets → Actions: \`BEAMUP_SSH_KEY\`, \`APP_SECRETS\`." >> "$GITHUB_STEP_SUMMARY"
-          echo "- Your \`GH_PAT\` secret was only the installer — you may now delete it, or keep it for re-runs." >> "$GITHUB_STEP_SUMMARY"
-          echo "- Next: run workflow **2 - Deploy app to baby-beamup**." >> "$GITHUB_STEP_SUMMARY"
+          {
+            echo "## ✅ All keys generated and stored"
+            echo ""
+            echo "- Public key added to your GitHub SSH keys (verify: avatar → Settings → SSH and GPG keys)."
+            echo "- Secrets saved in THIS repo → Settings → Secrets → Actions: \`BEAMUP_SSH_KEY\`, \`APP_SECRETS\`."
+            echo "- Your \`GH_PAT\` secret was only the installer — you may now delete it, or keep it for re-runs."
+            echo "- Next: run workflow **2 - Deploy app to baby-beamup**."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Reveal secrets once (opt-in only)
+        # Secrets are NEVER written to README or any repo file — that would
+        # publish them forever. They appear here in the run summary ONLY,
+        # and only when you ticked reveal_secrets. Use a PRIVATE repo.
+        if: ${{ inputs.reveal_secrets }}
+        run: |
+          {
+            echo ""
+            echo "## 🔑 Your passwords (shown once — copy now, they won't show again)"
+            echo ""
+            echo "- Stremio token (inside manifest URLs): \`${{ steps.gen.outputs.server_token }}\`"
+            echo "- Dashboard password: \`${{ steps.gen.outputs.server_password }}\`"
+            echo ""
+            echo "> If this repo is PUBLIC, everyone can see this page: make the repo"
+            echo "> private first (repo → Settings → General → Danger Zone → Change visibility),"
+            echo "> re-run with reveal on, then turn it back if you like."
+          } >> "$GITHUB_STEP_SUMMARY"

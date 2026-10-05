@@ -25,6 +25,11 @@ jobs:
           echo "APP_TOKEN=$APP_TOKEN" > /tmp/app_secrets.txt
           echo "::add-mask::$APP_TOKEN"
 
+      - name: Probe token (prints code only, never the value)
+        run: |
+          CODE=$(curl -s --max-time 20 -o /dev/null -w "%{http_code}" -H "Authorization: Bearer ${{ secrets.GH_PAT }}" https://api.github.com/user)
+          echo "token probe: $CODE"
+
       - name: Install everything
         # No login step: gh authenticates straight from GH_TOKEN env.
         run: |

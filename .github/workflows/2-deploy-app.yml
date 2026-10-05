@@ -2,14 +2,15 @@ name: "🚀 Deploy: Push App to BabyBeamUp"
 
 # Deploys any repo you own. No CLI on your PC.
 # Needs repo secrets: BEAMUP_SSH_KEY (from workflow 1).
+# ALWAYS builds with Docker: repo's own Dockerfile, or one we generate.
 
-# Which file hosts your app? You DON'T pick — the builder detects it:
-#   package.json      -> Node.js app (npm install + npm start)
-#   requirements.txt  -> Python app | composer.json -> PHP app
-#   Dockerfile        -> container, BUT project name MUST include "docker"
-#   Procfile          -> your own start command (wins over entry_file)
-# No Procfile and unsure? Set entry_file below (bot.js, main.py,
-# start.sh, package.json) and we write the Procfile for the push.
+# How the start file is decided (first match wins):
+#   1. Repo has a Dockerfile -> used as-is.
+#   2. entry_file set (bot.js, main.py, start.sh, package.json)
+#      -> we write BOTH a Procfile and a Dockerfile for the push.
+#   3. package.json with scripts.start -> Dockerfile runs npm start.
+# Your GitHub repo is never modified — generated files exist only in
+# the runner, for the push.
 
 on:
   workflow_dispatch:
@@ -19,7 +20,7 @@ on:
         required: true
         default: ""
       project:
-        description: "BeamUp project name (empty = repo name)"
+        description: "BeamUp project name (empty = repo name; auto-adds -docker when missing, Docker builds need it)"
         required: false
         default: ""
       entry_file:
@@ -60,15 +61,30 @@ jobs:
           REPO_NAME="${REPO_NAME##*/}"
           PROJECT="${{ inputs.project }}"
           [ -z "$PROJECT" ] && PROJECT="$REPO_NAME"
+          # Docker builds only sync when the name contains "docker".
+          case "$PROJECT" in
+            *docker*) ;;
+            *) PROJECT="$PROJECT-docker"; echo "Name lacks 'docker', using $PROJECT";;
+          esac
           echo "project=$PROJECT" >> "$GITHUB_OUTPUT"
 
-      - name: Write Procfile from entry file
-        # Skipped when entry_file is empty or repo already has a Procfile.
-        # Generated only for the push — your GitHub repo stays untouched.
+      - name: Write Procfile + Dockerfile
+        # Repo's own Dockerfile/Procfile always win and are kept as-is.
+        # Otherwise we generate both from entry_file (or package.json
+        # scripts.start) for the push only — your repo stays untouched.
         run: |
           ENTRY="${{ inputs.entry_file }}"
-          [ -z "$ENTRY" ] && exit 0
-          [ -f Procfile ] && exit 0
+          if [ -f Dockerfile ]; then
+            echo "Repo Dockerfile found, using it."
+            exit 0
+          fi
+          if [ -z "$ENTRY" ] && [ -f package.json ] && [ -f package-lock.json ]; then
+            ENTRY="package.json"
+          fi
+          if [ -z "$ENTRY" ]; then
+            echo "No Dockerfile, no Procfile, no entry_file — nothing to build. Set entry_file (bot.js, main.py, start.sh, package.json)."
+            exit 1
+          fi
           case "$ENTRY" in
             package.json) CMD="npm start" ;;
             *.js)         CMD="node $ENTRY" ;;
@@ -76,7 +92,33 @@ jobs:
             *.sh)         CMD="bash $ENTRY" ;;
             *) echo "Can't start '$ENTRY'. Use bot.js, main.py, start.sh or package.json."; exit 1 ;;
           esac
-          echo "web: $CMD" > Procfile
+          [ -f Procfile ] || echo "web: $CMD" > Procfile
+          if [ -f package.json ]; then
+            printf '%s\n' \
+              "FROM node:20-slim" \
+              "WORKDIR /app" \
+              "COPY package*.json ./" \
+              "RUN npm ci --omit=dev 2>/dev/null || npm install --omit=dev" \
+              "COPY . ." \
+              "ENV PORT=8080" \
+              "EXPOSE 8080" \
+              'CMD ["sh", "-c", "npm start"]' > Dockerfile
+          elif [ -f requirements.txt ]; then
+            PYCMD="$CMD"
+            printf '%s\n' \
+              "FROM python:3.12-slim" \
+              "WORKDIR /app" \
+              "COPY requirements.txt ./" \
+              "RUN pip install --no-cache-dir -r requirements.txt" \
+              "COPY . ." \
+              "ENV PORT=8080" \
+              "EXPOSE 8080" \
+              "CMD [\"sh\", \"-c\", \"$PYCMD\"]" > Dockerfile
+          else
+            echo "No package.json or requirements.txt — can't build an image. Add dependencies file."
+            exit 1
+          fi
+          echo "Generated Dockerfile + Procfile for the push."
 
       - name: Install SSH key
         run: |

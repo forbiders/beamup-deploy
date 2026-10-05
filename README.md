@@ -19,12 +19,13 @@ Actions → **🚀 Deploy: Push App to BabyBeamUp** → Run workflow:
 
 - **App repo** — which repo to host (`owner/repo`).
 - **Project** — empty = repo name (`Dockerfile` apps MUST include `docker`).
-- **Entry file** — which file starts your app if it has no `Procfile`
-  (`bot.js`, `main.py`, `start.sh`, `package.json`…). We generate the
-  `Procfile` for the push; your repo stays untouched.
+- **Entry file** — which file starts your app when the repo has no
+  `Dockerfile`/`Procfile` (`bot.js`, `main.py`, `start.sh`,
+  `package.json`…). Matching `Dockerfile` + `Procfile` are generated for
+  the push only; your repo stays untouched. Repos shipping their own
+  `Dockerfile` are used as-is.
 
 Ends printing your ✅ app link + the panel link. Re-tap for updates.
-Details: [`SECRETS.md`](SECRETS.md).
 
 ## 🌐 Our apps (auto-updated by every deploy)
 

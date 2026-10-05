@@ -15,6 +15,10 @@ on:
         description: "BeamUp project name (empty = repo name; Dockerfile apps MUST include 'docker')"
         required: false
         default: ""
+      entry_file:
+        description: "File that STARTS your app if it has no Procfile (examples: bot.js, main.py, start.sh, package.json). Empty = skip."
+        required: false
+        default: ""
       ref:
         description: "Branch/tag to deploy"
         required: false
@@ -52,6 +56,30 @@ jobs:
           [ -z "$PROJECT" ] && PROJECT="$REPO_NAME"
           echo "project=$PROJECT" >> "$GITHUB_OUTPUT"
           echo "Deploying ${{ inputs.target_repo }} as $PROJECT"
+
+      - name: Make entry file runnable (no Procfile? we write one)
+        # BeamUp only starts what a Procfile (or buildpack default) says.
+        # If your repo has no Procfile, tell us your start file and we
+        # generate one for the push — your GitHub repo stays untouched.
+        run: |
+          ENTRY="${{ inputs.entry_file }}"
+          if [ -z "$ENTRY" ]; then
+            echo "No entry_file given, skipping Procfile generation."
+            exit 0
+          fi
+          if [ -f Procfile ]; then
+            echo "Repo already has a Procfile, keeping it."
+            exit 0
+          fi
+          case "$ENTRY" in
+            package.json) CMD="npm start" ;;
+            *.js)         CMD="node $ENTRY" ;;
+            *.py)         CMD="python $ENTRY" ;;
+            *.sh)         CMD="bash $ENTRY" ;;
+            *) echo "Don't know how to start '$ENTRY' (use bot.js, main.py, start.sh or package.json)."; exit 1 ;;
+          esac
+          echo "web: $CMD" > Procfile
+          echo "Generated Procfile: web: $CMD"
 
       - name: Install SSH key for BeamUp
         run: |
@@ -103,7 +131,8 @@ jobs:
       - name: Show app URL
         run: |
           echo "## ✅ Pushed to BeamUp" >> "$GITHUB_STEP_SUMMARY"
-          echo "Live at **$APP_URL** (allow a few minutes for first boot)." >> "$GITHUB_STEP_SUMMARY"
+          echo "Your app link: **$APP_URL** (allow a few minutes for first boot)." >> "$GITHUB_STEP_SUMMARY"
+          echo "Your BeamUp panel (all your apps): **https://baby-beamup.club** (log in with GitHub)." >> "$GITHUB_STEP_SUMMARY"
           echo "New apps can take ~6h before the host registry accepts them — retry later if the push was rejected." >> "$GITHUB_STEP_SUMMARY"
 
       - name: Register link in README

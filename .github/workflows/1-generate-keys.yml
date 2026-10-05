@@ -1,9 +1,9 @@
 name: 1 - Generate all keys
 
-# Tap "Run workflow" once. Needs the GH_PAT secret (classic token:
-# repo + workflow + admin:public_key). Makes the deploy keypair + app
-# token and installs everything itself. No terminal, no pasting.
-# No token? Follow the manual steps in SECRETS.md instead.
+# Tap "Run workflow" once. Makes your deploy keypair + app token and
+# prints them in the run summary — paste the 3 blocks where SECRETS.md
+# points (~2 minutes). No tokens, no CLI, nothing installed.
+# PRIVATE repo recommended: summaries on public repos are visible to all.
 
 on:
   workflow_dispatch:
@@ -12,13 +12,6 @@ jobs:
   generate:
     runs-on: ubuntu-latest
     steps:
-      - name: Require GH_PAT
-        run: |
-          if [ -z "${{ secrets.GH_PAT }}" ]; then
-            echo "No GH_PAT secret. See SECRETS.md (manual mode) instead." >> "$GITHUB_STEP_SUMMARY"
-            exit 1
-          fi
-
       - name: Generate keys
         run: |
           ssh-keygen -t ed25519 -f /tmp/beamup -N "" -C "babybeamup-deploy" -q
@@ -26,24 +19,25 @@ jobs:
           echo "APP_TOKEN=$APP_TOKEN" > /tmp/app_secrets.txt
           echo "::add-mask::$APP_TOKEN"
 
-      - name: Install everything
+      - name: Show what to paste
         run: |
-          echo "${{ secrets.GH_PAT }}" | gh auth login --with-token
-          gh ssh-key add /tmp/beamup.pub --title "babybeamup-deploy" 2>&1 || true
-          gh secret set BEAMUP_SSH_KEY < /tmp/beamup
-          gh secret set APP_TOKEN < /tmp/app_secrets.txt
-        env:
-          GH_TOKEN: ${{ secrets.GH_PAT }}
+          {
+            echo "## ✋ Paste these 3 things"
+            echo ""
+            echo "### 1. Public key → avatar → Settings → SSH and GPG keys → New SSH key"
+            echo '```'
+            cat /tmp/beamup.pub
+            echo '```'
+            echo "### 2. Private key → THIS repo → Settings → Secrets → Actions → new secret \`BEAMUP_SSH_KEY\`"
+            echo '```'
+            cat /tmp/beamup
+            echo '```'
+            echo "### 3. Token → same place → new secret \`APP_TOKEN\`"
+            echo '```'
+            cat /tmp/app_secrets.txt
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Shred local copies
         if: always()
         run: rm -f /tmp/beamup /tmp/beamup.pub /tmp/app_secrets.txt
-
-      - name: Summary
-        run: |
-          {
-            echo "## ✅ Keys installed"
-            echo ""
-            echo "- SSH key → your GitHub SSH keys. Secrets → repo Settings → Secrets: \`BEAMUP_SSH_KEY\`, \`APP_TOKEN\`."
-            echo "- Next: run workflow **2 - Deploy app to baby-beamup**."
-          } >> "$GITHUB_STEP_SUMMARY"

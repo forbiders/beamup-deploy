@@ -1,35 +1,32 @@
 name: 1 - Generate all keys
 
-# Tap "Run workflow" once. Makes your deploy keypair + app token.
-# AUTO (GH_PAT secret exists): installs everything itself.
-# MANUAL (no GH_PAT): tick reveal_secrets, paste the 3 shown values by hand.
-# Use a PRIVATE repo when revealing. No CLI, no terminal.
+# Tap "Run workflow" once. Needs the GH_PAT secret (classic token:
+# repo + workflow + admin:public_key). Makes the deploy keypair + app
+# token and installs everything itself. No terminal, no pasting.
+# No token? Follow the manual steps in SECRETS.md instead.
 
 on:
   workflow_dispatch:
-    inputs:
-      reveal_secrets:
-        description: "SHOW values in the summary (needed for manual mode; PRIVATE repo only)"
-        required: false
-        default: false
-        type: boolean
 
 jobs:
   generate:
     runs-on: ubuntu-latest
     steps:
+      - name: Require GH_PAT
+        run: |
+          if [ -z "${{ secrets.GH_PAT }}" ]; then
+            echo "No GH_PAT secret. See SECRETS.md (manual mode) instead." >> "$GITHUB_STEP_SUMMARY"
+            exit 1
+          fi
+
       - name: Generate keys
-        id: gen
         run: |
           ssh-keygen -t ed25519 -f /tmp/beamup -N "" -C "babybeamup-deploy" -q
           APP_TOKEN=$(openssl rand -hex 16)
           echo "APP_TOKEN=$APP_TOKEN" > /tmp/app_secrets.txt
           echo "::add-mask::$APP_TOKEN"
-          echo "app_token=$APP_TOKEN" >> "$GITHUB_OUTPUT"
-          echo "auto=$([ -n '${{ secrets.GH_PAT }}' ] && echo yes || echo no)" >> "$GITHUB_OUTPUT"
 
-      - name: Auto-install (GH_PAT present)
-        if: ${{ steps.gen.outputs.auto == 'yes' }}
+      - name: Install everything
         run: |
           echo "${{ secrets.GH_PAT }}" | gh auth login --with-token
           gh ssh-key add /tmp/beamup.pub --title "babybeamup-deploy" 2>&1 || true
@@ -38,41 +35,15 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GH_PAT }}
 
-      - name: Summary (auto)
-        if: ${{ steps.gen.outputs.auto == 'yes' }}
+      - name: Shred local copies
+        if: always()
+        run: rm -f /tmp/beamup /tmp/beamup.pub /tmp/app_secrets.txt
+
+      - name: Summary
         run: |
           {
-            echo "## ✅ Keys installed automatically"
+            echo "## ✅ Keys installed"
             echo ""
             echo "- SSH key → your GitHub SSH keys. Secrets → repo Settings → Secrets: \`BEAMUP_SSH_KEY\`, \`APP_TOKEN\`."
             echo "- Next: run workflow **2 - Deploy app to baby-beamup**."
           } >> "$GITHUB_STEP_SUMMARY"
-
-      - name: Summary (manual — paste these)
-        if: ${{ steps.gen.outputs.auto != 'yes' && inputs.reveal_secrets }}
-        run: |
-          {
-            echo "## ✋ Paste these 3 things"
-            echo ""
-            echo "### 1. Public key → avatar → Settings → SSH and GPG keys → New SSH key"
-            echo '```'
-            cat /tmp/beamup.pub
-            echo '```'
-            echo "### 2. Private key → THIS repo → Settings → Secrets → Actions → new secret \`BEAMUP_SSH_KEY\`"
-            echo '```'
-            cat /tmp/beamup
-            echo '```'
-            echo "### 3. Token → same place → new secret \`APP_TOKEN\`"
-            echo '```'
-            cat /tmp/app_secrets.txt
-            echo '```'
-          } >> "$GITHUB_STEP_SUMMARY"
-
-      - name: Summary (manual — reveal off)
-        if: ${{ steps.gen.outputs.auto != 'yes' && !inputs.reveal_secrets }}
-        run: |
-          echo "## ✋ Re-run with reveal_secrets ticked (private repo) to see the 3 values" >> "$GITHUB_STEP_SUMMARY"
-
-      - name: Shred local copies
-        if: always()
-        run: rm -f /tmp/beamup /tmp/beamup.pub /tmp/app_secrets.txt

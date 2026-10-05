@@ -9,8 +9,8 @@ Actions → **1 - Generate all keys** → Run workflow.
 
 - Have a `GH_PAT` secret (classic token: `repo` + `workflow` +
   `admin:public_key`)? Everything installs itself.
-- Don't? Tick `reveal_secrets` (private repo!) and paste the 3 shown
-  values by hand — takes 2 minutes. Details: [`SECRETS.md`](SECRETS.md).
+- Don't? Follow the manual paste steps in [`SECRETS.md`](SECRETS.md#manual-mode-no-token-at-all)
+  — 2 minutes, no token ever created.
 
 ## Tap 2 — deploy
 

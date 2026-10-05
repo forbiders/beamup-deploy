@@ -36,6 +36,25 @@ Workflow 2 applies them to your BeamUp app. Skip if your app needs none.
 
 ## See values once
 
-Secrets show as `***` everywhere. To view: make this repo **private**,
-run workflow 1 with `reveal_secrets` ticked, copy from the run Summary.
-Never write values into README or any file.
+Secrets show as `***` everywhere. Copy them into your password manager
+when you make them, never into README or any file.
+
+## Manual mode (no token at all)
+
+Prefer zero tokens? Do once, in any terminal:
+
+```bash
+ssh-keygen -t ed25519 -f ~/.ssh/beamup -N "" -C "babybeamup-deploy"
+openssl rand -hex 16   # your APP_TOKEN, save it somewhere safe
+```
+
+Then paste by hand:
+
+1. **Public key** (`cat ~/.ssh/beamup.pub`) → avatar → Settings →
+   **SSH and GPG keys** → New SSH key, title `babybeamup-deploy`.
+2. **Private key** (`cat ~/.ssh/beamup`) → this repo → Settings →
+   Secrets → Actions → new secret named `BEAMUP_SSH_KEY`.
+3. **App token** (the hex from above) → same place → new secret named
+   `APP_TOKEN`.
+
+Then run workflow **2** directly — workflow 1 is skipped entirely.

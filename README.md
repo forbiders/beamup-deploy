@@ -17,6 +17,14 @@ Actions → **1 - Generate all keys** → Run workflow.
 Actions → **2 - Deploy app to baby-beamup** → Run workflow, type any
 `owner/repo`. Prints your ✅ live link. Re-tap for every update.
 
+## 🌐 Hosted apps (auto-updated by every deploy)
+
+| Repo (what's hosted)   | Live link                                                  | Since      |
+| ---------------------- | ---------------------------------------------------------- | ---------- |
+| `zunex69/stremioaddon` | https://11be42da33dd-pencarimovie-streams.baby-beamup.club | 2026-10-05 |
+
+<!-- hosted-apps-end -->
+
 ---
 
 # 📖 The full BeamUp manual (every bit)

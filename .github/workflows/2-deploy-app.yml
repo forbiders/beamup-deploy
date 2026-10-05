@@ -23,6 +23,8 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write # to register the live link in this repo's README
     env:
       BEAMUP_HOST: a.baby-beamup.club
       GH_USER: ${{ github.repository_owner }}
@@ -33,6 +35,8 @@ jobs:
           repository: ${{ inputs.target_repo }}
           ref: ${{ inputs.ref }}
           fetch-depth: 0
+          # Falls back to the built-in token; set GH_PAT for private repos.
+          token: ${{ secrets.GH_PAT || github.token }}
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
@@ -101,3 +105,21 @@ jobs:
           echo "## ✅ Pushed to BeamUp" >> "$GITHUB_STEP_SUMMARY"
           echo "Live at **$APP_URL** (allow a few minutes for first boot)." >> "$GITHUB_STEP_SUMMARY"
           echo "New apps can take ~6h before the host registry accepts them — retry later if the push was rejected." >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Register link in README
+        # Keeps this repo's README as the live registry: which repo is
+        # hosted where. Re-runs update the row instead of duplicating it.
+        run: |
+          git clone --quiet "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" /tmp/factory
+          cd /tmp/factory
+          git config user.name "beamup-deploy"
+          git config user.email "beamup-deploy@users.noreply.github.com"
+          ROW="| \`${{ inputs.target_repo }}\` | $APP_URL | $(date -u +%Y-%m-%d) |"
+          if grep -q "| \`${{ inputs.target_repo }}\` |" README.md; then
+            sed -i "s#| \`${{ inputs.target_repo }}\` .*#$ROW#" README.md
+          else
+            awk -v row="$ROW" '/<!-- hosted-apps-end -->/{print row}1' README.md > README.md.tmp && mv README.md.tmp README.md
+          fi
+          git add README.md
+          git diff --cached --quiet || git commit -m "register ${{ inputs.target_repo }} -> $APP_URL" --quiet
+          git push origin main --quiet || echo "(registry update skipped: push raced another run)"

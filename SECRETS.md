@@ -5,17 +5,24 @@
 > was made and make a new one. This factory is app-agnostic — substitute
 > your own app's secret names wherever you see examples.
 
-## A. The ONE secret you paste by hand (in this repo)
+## A. Getting keys in: two ways, your choice
+
+**AUTO (one paste, then taps):** paste `GH_PAT` once (row below) and
+workflow 1 installs everything itself.
+
+**MANUAL (zero tokens):** paste nothing. Run workflow 1 with
+`reveal_secrets` ticked (private repo!) and paste the 3 shown values by
+hand per section C. Takes ~2 minutes, no token ever created.
 
 This repo → **Settings** → **Secrets and variables** → **Actions** →
 **New repository secret**. Name (left box) must match exactly:
 
-| Secret name | What to paste (right box)                                                               | Where you get it                                                                                                                                                | After setup                                                                                                    |
-| ----------- | --------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
-| `GH_PAT`    | A GitHub token, classic, with scopes **`repo`**, **`workflow`**, **`admin:public_key`** | Avatar → Settings → Developer settings → **Personal access tokens → Tokens (classic)** → Generate new → tick those 3 boxes → Generate → **copy it immediately** | Workflow 1 uses it once to install everything below. Afterwards you may **delete** it, or keep it for re-runs. |
+| Secret name                                                | What to paste (right box)                                                               | Where you get it                                                                                                                                                | After setup                                                                                                    |
+| ---------------------------------------------------------- | --------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| `GH_PAT` _(auto mode only — skip entirely in manual mode)_ | A GitHub token, classic, with scopes **`repo`**, **`workflow`**, **`admin:public_key`** | Avatar → Settings → Developer settings → **Personal access tokens → Tokens (classic)** → Generate new → tick those 3 boxes → Generate → **copy it immediately** | Workflow 1 uses it once to install everything below. Afterwards you may **delete** it, or keep it for re-runs. |
 
-> That's the ONLY thing you ever paste by hand. Everything in section B is
-> made for you by workflow **1 - Generate all keys**.
+> In auto mode that's the ONLY thing you ever paste by hand. Everything in section B is
+> made for you by workflow **1 - Generate all keys**. In manual mode you paste the 3 values from section C instead.
 
 ## B. Secrets the workflow makes for you (automatic)
 

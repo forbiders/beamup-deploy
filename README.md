@@ -11,12 +11,14 @@ can host. (One of our apps using this: `zunex69/stremioaddon` — see
 
 ## The whole thing in 3 taps
 
-1. **Paste one secret.** This repo → Settings → Secrets → Actions → New
-   secret: name `GH_PAT`, value = your classic token (scopes `repo`,
-   `workflow`, `admin:public_key`). Full click-path in [`SECRETS.md`](SECRETS.md).
+1. **Keys — pick a mode.** Either paste one secret (`GH_PAT`, classic
+   token with `repo` + `workflow` + `admin:public_key`) for full-auto —
+   **or paste nothing at all** and do 2 minutes of hand-pasting instead.
+   Full click-path in [`SECRETS.md`](SECRETS.md).
 2. **Tap 1:** Actions → **1 - Generate all keys** → Run workflow.
-   Makes your deploy key + a random app token and stores them. Done —
-   nothing to copy anywhere by hand.
+   Makes your deploy key + a random app token and stores them (auto), or
+   shows them for hand-pasting with `reveal_secrets` ticked (manual,
+   private repo).
 3. **Tap 2:** Actions → **2 - Deploy app to baby-beamup** → Run workflow.
    Type any `owner/repo`, it deploys it and prints your ✅ live link.
 

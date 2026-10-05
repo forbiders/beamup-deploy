@@ -29,8 +29,8 @@ jobs:
         # No login step: gh authenticates straight from GH_TOKEN env.
         run: |
           gh ssh-key add /tmp/beamup.pub --title "babybeamup-deploy" 2>&1 || true
-          gh secret set BEAMUP_SSH_KEY < /tmp/beamup
-          gh secret set APP_TOKEN < /tmp/app_secrets.txt
+          gh secret set BEAMUP_SSH_KEY --repo ${{ github.repository }} < /tmp/beamup
+          gh secret set APP_TOKEN --repo ${{ github.repository }} < /tmp/app_secrets.txt
         env:
           GH_TOKEN: ${{ secrets.GH_PAT }}
 

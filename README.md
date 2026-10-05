@@ -31,7 +31,7 @@ Ends printing your ✅ app link + the panel link. Re-tap for updates.
 
 | Repo (what's hosted)   | Live link                                                  | Since      |
 | ---------------------- | ---------------------------------------------------------- | ---------- |
-| `zunex69/stremioaddon` | https://11be42da33dd-stremioaddon.baby-beamup.club | 2026-10-05 |
+| `zunex69/stremioaddon` | https://11be42da33dd-pencarimovie-streams.baby-beamup.club | 2026-10-05 |
 
 <!-- hosted-apps-end -->
 

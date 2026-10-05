@@ -15,12 +15,8 @@ chat, or README.
 
 ## Tap 2 — deploy (per app)
 
-Actions → **🚀 Deploy: Push App to BabyBeamUp** → Run workflow, or use a
-one-tap button (zero typing — values hardcoded):
-
-| Button file                | Deploys                | As                            |
-| -------------------------- | ---------------------- | ----------------------------- |
-| `deploy-streams-addon.yml` | `zunex69/stremioaddon` | existing live app (name kept) |
+Actions → **🚀 Deploy: Push App to BabyBeamUp** → Run workflow, type the
+repo, get your link. Re-tap for updates.
 
 - **App repo** — which repo to host (`owner/repo`).
 - **Project** — empty = repo name (`Dockerfile` apps MUST include `docker`).

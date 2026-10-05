@@ -1,42 +1,25 @@
-# 🚀 beamup-deploy — baby-beamup.club without touching a terminal
+# 🚀 beamup-deploy — baby-beamup.club with two taps
 
-[![1 - Generate all keys](https://img.shields.io/badge/1-Generate_all_keys-8a5aab)](https://github.com/zunex69/beamup-deploy/actions/workflows/1-generate-keys.yml)
-[![2 - Deploy app](https://img.shields.io/badge/2-Deploy_app-7b5bf5)](https://github.com/zunex69/beamup-deploy/actions/workflows/2-deploy-app.yml)
+Deploy any repo you own to [baby-beamup.club](https://baby-beamup.club).
+No CLI, no terminal — everything happens in GitHub.
 
-Deploy **any repo you own** to [baby-beamup.club](https://baby-beamup.club)
-with two taps. No CLI, no `ssh` on your PC — everything happens inside
-GitHub. App-agnostic: Stremio addons, bots, dashboards, anything BeamUp
-can host. (One of our apps using this: `zunex69/stremioaddon` — see
-[`examples/`](examples/) for per-app notes.)
+## Tap 1 — keys
 
-## The whole thing in 3 taps
+Actions → **1 - Generate all keys** → Run workflow.
 
-1. **Keys — pick a mode.** Either paste one secret (`GH_PAT`, classic
-   token with `repo` + `workflow` + `admin:public_key`) for full-auto —
-   **or paste nothing at all** and do 2 minutes of hand-pasting instead.
-   Full click-path in [`SECRETS.md`](SECRETS.md).
-2. **Tap 1:** Actions → **1 - Generate all keys** → Run workflow.
-   Makes your deploy key + a random app token and stores them (auto), or
-   shows them for hand-pasting with `reveal_secrets` ticked (manual,
-   private repo).
-3. **Tap 2:** Actions → **2 - Deploy app to baby-beamup** → Run workflow.
-   Type any `owner/repo`, it deploys it and prints your ✅ live link.
+- Have a `GH_PAT` secret (classic token: `repo` + `workflow` +
+  `admin:public_key`)? Everything installs itself.
+- Don't? Tick `reveal_secrets` (private repo!) and paste the 3 shown
+  values by hand — takes 2 minutes. Details: [`SECRETS.md`](SECRETS.md).
 
-## Files
+## Tap 2 — deploy
 
-| File                                    | What it is                                                     |
-| --------------------------------------- | -------------------------------------------------------------- |
-| `.github/workflows/1-generate-keys.yml` | Tap 1: makes SSH keypair + random app token, installs them     |
-| `.github/workflows/2-deploy-app.yml`    | Tap 2: pushes any repo to BeamUp, applies secrets, prints URL  |
-| [`SECRETS.md`](SECRETS.md)              | Every secret: name, exact box it goes in, format, who makes it |
-| [`GUIDE.md`](GUIDE.md)                  | Full ELI10 guide: keys, taps, rules, error table               |
-| [`examples/`](examples/)                | Per-app notes (hosting recipes for specific projects)          |
+Actions → **2 - Deploy app to baby-beamup** → Run workflow, type any
+`owner/repo`. Prints your ✅ live link. Re-tap for every update.
 
-## Rules that bite (learned the hard way)
+## Rules
 
-- **New apps need ~6h before the first deploy lands.** Pushes inside that
-  window fail (`SyntaxError`, `update out of sequence`) — they mean
-  _"not yet"_, retry later. The deploy workflow retries 3× automatically.
-- **Dockerfile apps must have `docker` in the project name.** Plain
-  buildpack apps (Node, Python, …) can be named anything.
+- New apps need ~6h before the first deploy lands (`SyntaxError` /
+  `update out of sequence` = "not yet", retry later).
+- Dockerfile apps must have `docker` in the project name.
 - Secrets live in Settings → Secrets. Never in code, chat, or issues.

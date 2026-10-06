@@ -34,6 +34,7 @@ Ends printing your ✅ app link + the panel link. Re-tap for updates.
 | ---------------------- | ---------------------------------------------------------- | ---------- |
 | `zunex69/stremioaddon` | https://11be42da33dd-pencarimovie-streams.baby-beamup.club | 2026-10-05 |
 
+| `SA7ANI/chole-bhature` | https://11be42da33dd-chole-bhature-docker.baby-beamup.club | 2026-10-06 |
 <!-- hosted-apps-end -->
 
 Panel (all apps): https://baby-beamup.club — log in with GitHub.

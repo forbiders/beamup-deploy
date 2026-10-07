@@ -12,8 +12,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Require GH_PAT
+        env:
+          GH_PAT: ${{ secrets.GH_PAT }}
         run: |
-          if [ -z "${{ secrets.GH_PAT }}" ]; then
+          if [ -z "$GH_PAT" ]; then
             echo "Missing GH_PAT secret. Add it (classic token: repo, workflow, admin:public_key), then re-run." >> "$GITHUB_STEP_SUMMARY"
             exit 1
           fi
@@ -26,18 +28,28 @@ jobs:
           echo "::add-mask::$APP_TOKEN"
 
       - name: Probe token (prints code only, never the value)
+        env:
+          GH_PAT: ${{ secrets.GH_PAT }}
         run: |
-          CODE=$(curl -s --max-time 20 -o /dev/null -w "%{http_code}" -H "Authorization: Bearer ${{ secrets.GH_PAT }}" https://api.github.com/user)
+          CODE=$(curl -s --max-time 20 -o /dev/null -w "%{http_code}" -H "Authorization: Bearer $GH_PAT" https://api.github.com/user)
           echo "token probe: $CODE"
+          case "$CODE" in
+            200) ;;
+            401|403) echo "::error::GH_PAT rejected (HTTP $CODE). Needs repo + workflow + admin:public_key."; exit 1;;
+            *) echo "::error::Unexpected HTTP $CODE probing GH_PAT."; exit 1;;
+          esac
 
       - name: Install everything
         # No login step: gh authenticates straight from GH_TOKEN env.
         run: |
-          gh ssh-key add /tmp/beamup.pub --title "babybeamup-deploy" 2>&1 || true
-          gh secret set BEAMUP_SSH_KEY --repo ${{ github.repository }} < /tmp/beamup
-          gh secret set APP_TOKEN --repo ${{ github.repository }} < /tmp/app_secrets.txt
+          if ! gh ssh-key add /tmp/beamup.pub --title "babybeamup-deploy" 2>&1; then
+            echo "::warning::Could not add the deploy key to your GitHub account. BeamUp sync may fail later."
+          fi
+          gh secret set BEAMUP_SSH_KEY --repo "$FACTORY_REPO" < /tmp/beamup
+          gh secret set APP_TOKEN --repo "$FACTORY_REPO" < /tmp/app_secrets.txt
         env:
           GH_TOKEN: ${{ secrets.GH_PAT }}
+          FACTORY_REPO: ${{ github.repository }}
 
       - name: Shred local copies
         if: always()

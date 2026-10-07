@@ -60,13 +60,17 @@ jobs:
 
       - name: Resolve names
         id: names
+        env:
+          TARGET_REPO: ${{ inputs.target_repo }}
+          INPUT_PROJECT: ${{ inputs.project }}
+          USE_DOCKER: ${{ inputs.use_docker }}
         run: |
-          REPO_NAME="${{ inputs.target_repo }}"
+          REPO_NAME="$TARGET_REPO"
           REPO_NAME="${REPO_NAME##*/}"
-          PROJECT="${{ inputs.project }}"
+          PROJECT="$INPUT_PROJECT"
           [ -z "$PROJECT" ] && PROJECT="$REPO_NAME"
           # Docker builds only sync when the name contains "docker".
-          if [ "${{ inputs.use_docker }}" = "true" ]; then
+          if [ "$USE_DOCKER" = "true" ]; then
             case "$PROJECT" in
               *docker*) ;;
               *) PROJECT="$PROJECT-docker"; echo "Name lacks 'docker', using $PROJECT";;
@@ -79,9 +83,12 @@ jobs:
         # Dockerfile (+Procfile) from entry_file or package.json start.
         # Herokuish mode (use_docker=false): Procfile only, same fallback.
         # Generated files exist for the push only — repos stay untouched.
+        env:
+          ENTRY_FILE: ${{ inputs.entry_file }}
+          USE_DOCKER: ${{ inputs.use_docker }}
         run: |
-          ENTRY="${{ inputs.entry_file }}"
-          if [ "${{ inputs.use_docker }}" = "true" ] && [ -f Dockerfile ]; then
+          ENTRY="$ENTRY_FILE"
+          if [ "$USE_DOCKER" = "true" ] && [ -f Dockerfile ]; then
             echo "Repo Dockerfile found, using it."
             exit 0
           fi
@@ -100,7 +107,7 @@ jobs:
             *) echo "Can't start '$ENTRY'. Use bot.js, main.py, start.sh or package.json."; exit 1 ;;
           esac
           [ -f Procfile ] || echo "web: $CMD" > Procfile
-          if [ "${{ inputs.use_docker }}" != "true" ]; then
+          if [ "$USE_DOCKER" != "true" ]; then
             echo "Herokuish mode: Procfile ready, no Dockerfile."
             exit 0
           fi
@@ -132,9 +139,13 @@ jobs:
           echo "Generated Dockerfile + Procfile for the push."
 
       - name: Install SSH key
+        env:
+          BEAMUP_SSH_KEY: ${{ secrets.BEAMUP_SSH_KEY }}
         run: |
           mkdir -p ~/.ssh
-          echo "${{ secrets.BEAMUP_SSH_KEY }}" > ~/.ssh/beamup
+          # printf, not echo: the key is base64-ish text and echo's -n/quoting
+          # behaviour is not worth relying on for a value we cannot inspect.
+          printf '%s\n' "$BEAMUP_SSH_KEY" > ~/.ssh/beamup
           chmod 600 ~/.ssh/beamup
 
       - name: Install beamup-cli
@@ -152,28 +163,40 @@ jobs:
           sleep 30
 
       - name: Push to BeamUp
+        env:
+          PROJECT: ${{ steps.names.outputs.project }}
         run: |
           HASH=$(printf '%s\n' "$(echo "$GH_USER" | tr '[:upper:]' '[:lower:]')" | sha256sum | cut -c1-12)
-          PROJECT="${{ steps.names.outputs.project }}"
           export GIT_SSH_COMMAND="ssh -i ~/.ssh/beamup -o StrictHostKeyChecking=no -o ServerAliveInterval=15"
           git remote add beamup "dokku@$BEAMUP_HOST:$HASH/$PROJECT" || true
+          # BeamUp's pre-receive hook declines the push for anything it will not
+          # accept, so a rejection here is a failed deploy and must fail the step.
+          # `git push && break` did not: on three failures the loop ended on a
+          # successful `sleep`, the step went green, and the app was never live.
           for i in 1 2 3; do
-            git push beamup HEAD:master --force && break
-            sleep 300
+            if git push beamup HEAD:master --force; then
+              echo "APP_URL=https://$HASH-$PROJECT.baby-beamup.club" >> "$GITHUB_ENV"
+              exit 0
+            fi
+            echo "::error::BeamUp rejected attempt $i/3. See remote output above."
+            [ "$i" -lt 3 ] && sleep 300
           done
-          echo "APP_URL=https://$HASH-$PROJECT.baby-beamup.club" >> "$GITHUB_ENV"
+          echo "::error::Deploy failed after 3 attempts. Nothing was deployed — do not trust any link below."
+          exit 1
 
       - name: Apply app secrets
         # Skipped when APP_SECRETS is empty. One KEY=value per line.
+        env:
+          APP_SECRETS: ${{ secrets.APP_SECRETS }}
+          PROJECT: ${{ steps.names.outputs.project }}
         run: |
-          [ -z "${{ secrets.APP_SECRETS }}" ] && exit 0
+          [ -z "$APP_SECRETS" ] && exit 0
           HASH=$(printf '%s\n' "$(echo "$GH_USER" | tr '[:upper:]' '[:lower:]')" | sha256sum | cut -c1-12)
-          PROJECT="${{ steps.names.outputs.project }}"
           while IFS= read -r line; do
             [ -z "$line" ] && continue
             ssh -i ~/.ssh/beamup -o StrictHostKeyChecking=no \
               "dokku@$BEAMUP_HOST" config:set "$HASH/$PROJECT" "$line"
-          done <<< "${{ secrets.APP_SECRETS }}"
+          done <<< "$APP_SECRETS"
 
       - name: Show links
         run: |
@@ -183,17 +206,33 @@ jobs:
 
       - name: Register link in README
         # Adds/updates this repo's hosted-apps table. Never duplicates rows.
+        env:
+          TARGET_REPO: ${{ inputs.target_repo }}
+          FACTORY_REPO: ${{ github.repository }}
+          OWNER: ${{ github.repository_owner }}
+          GH_TOKEN: ${{ github.token }}
         run: |
-          git clone --quiet "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" /tmp/factory
-          cd /tmp/factory
-          git config user.name "${{ github.repository_owner }}"
-          git config user.email "${{ github.repository_owner }}@users.noreply.github.com"
-          ROW="| \`${{ inputs.target_repo }}\` | $APP_URL | $(date -u +%Y-%m-%d) |"
-          if grep -q "| \`${{ inputs.target_repo }}\` |" README.md; then
-            sed -i "s#| \`${{ inputs.target_repo }}\` .*#$ROW#" README.md
+          # --depth 1 because this repo *is* the workflow repo: a full clone is
+          # wasted work. The token arrives via env, so a repo name cannot inject
+          # shell into the URL. GitHub masks it in logs.
+          git clone --quiet --depth 1 \
+            "https://x-access-token:$GH_TOKEN@github.com/$FACTORY_REPO.git" .
+          git config user.name "$OWNER"
+          git config user.email "$OWNER@users.noreply.github.com"
+          # Escape sed's replacement metachars so a repo name containing & or /
+          # cannot corrupt the table.
+          esc=$(printf '%s' "$TARGET_REPO" | sed -e 's/[&|\/]/\\&/g')
+          ROW="| \`$TARGET_REPO\` | $APP_URL | $(date -u +%Y-%m-%d) |"
+          esc_row=$(printf '%s' "$ROW" | sed -e 's/[&|\/]/\\&/g')
+          if grep -qF "| \`$TARGET_REPO\` |" README.md; then
+            sed -i "s#| \`$esc\` .*#$esc_row#" README.md
           else
             awk -v row="$ROW" '/<!-- hosted-apps-end -->/{print row}1' README.md > README.md.tmp && mv README.md.tmp README.md
           fi
           git add README.md
-          git diff --cached --quiet || git commit -m "register ${{ inputs.target_repo }}" --quiet
-          git push origin main --quiet || true
+          if git diff --cached --quiet; then
+            echo "Table row already current."
+          else
+            git commit -m "register $TARGET_REPO" --quiet
+            git push origin HEAD:main --quiet
+          fi

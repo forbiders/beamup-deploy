@@ -16,7 +16,7 @@ on:
   workflow_dispatch:
     inputs:
       target_repo:
-        description: "App repo as owner/name"
+        description: "App repo as forbiders/chitra"
         required: true
         default: ""
       project:

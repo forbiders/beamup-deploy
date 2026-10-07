@@ -215,8 +215,14 @@ jobs:
           # --depth 1 because this repo *is* the workflow repo: a full clone is
           # wasted work. The token arrives via env, so a repo name cannot inject
           # shell into the URL. GitHub masks it in logs.
+          # Clone into a fresh dir: the step starts in the repo checkout, which
+          # is already non-empty, so cloning into "." fails with
+          # "destination path '.' already exists and is not an empty directory".
+          CLONE_DIR="$RUNNER_TEMP/readme-registry"
+          rm -rf "$CLONE_DIR"
           git clone --quiet --depth 1 \
-            "https://x-access-token:$GH_TOKEN@github.com/$FACTORY_REPO.git" .
+            "https://x-access-token:$GH_TOKEN@github.com/$FACTORY_REPO.git" "$CLONE_DIR"
+          cd "$CLONE_DIR"
           git config user.name "$OWNER"
           git config user.email "$OWNER@users.noreply.github.com"
           # Escape sed's replacement metachars so a repo name containing & or /

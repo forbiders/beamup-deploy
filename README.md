@@ -36,6 +36,7 @@ Ends printing your ✅ app link + the panel link. Re-tap for updates.
 
 | `SA7ANI/chole-bhature` | https://11be42da33dd-chole-bhature-docker.baby-beamup.club | 2026-10-06 |
 | `forbiders/chitra` | https://1e6395aae4d1-chitra-docker.baby-beamup.club | 2026-10-07 |
+| `forbiders/chole-bhature` | https://1e6395aae4d1-chole-bhature.baby-beamup.club | 2026-10-07 |
 <!-- hosted-apps-end -->
 
 Panel (all apps): https://baby-beamup.club — log in with GitHub.
